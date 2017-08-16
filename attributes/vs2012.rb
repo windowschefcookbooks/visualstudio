@@ -226,6 +226,7 @@ default['visualstudio']['2012']['update']['package_name'] =
   'Visual Studio 2012 Update 5 (KB2707250)'
 default['visualstudio']['2012']['update']['default_source'] =
   'https://download.microsoft.com/download/1/7/A/17A8493D-BB25-4811-8242-CCCB74EF982E'
+default['visualstudio']['2012']['update']['installer_file'] = nil
 
 # VS 2012 Office developer tools
 default['visualstudio']['2012']['vsto']['installer_file'] = 'officetools_bundle.exe'

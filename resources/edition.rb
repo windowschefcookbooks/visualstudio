@@ -32,7 +32,7 @@ attribute :version, kind_of: String, required: true
 attribute :install_dir, kind_of: String, required: true
 
 # The ISO full source URL
-attribute :source, kind_of: String, required: true
+attribute :source, kind_of: String, required: false
 
 # The installed MSI package name
 attribute :package_name, kind_of: String, required: true

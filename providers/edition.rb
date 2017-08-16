@@ -41,6 +41,15 @@ action :install do
         source new_resource.source
         overwrite true
         checksum new_resource.checksum
+        only_if { !(new_resource.source == '' || new_resource.source.nil?) && extractable_download }
+      end
+
+      # Not an ISO but the web install
+      remote_file "download__#{new_resource.version}_#{new_resource.edition}" do
+        path installer_exe
+        source { lazy { new_resource.source } }
+        checksum new_resource.checksum
+        only_if { !(new_resource.source == '' || new_resource.source.nil?) && !extractable_download }
       end
 
       # Ensure the target directory exists so logging doesn't fail on VS 2010
@@ -49,15 +58,12 @@ action :install do
         recursive true
       end
 
-      # Install Visual Studio
-      setup_options = new_resource.version == '2010' ? prepare_vs2010_options : prepare_vs_options
-
       windows_package new_resource.package_name do
         source installer_exe
         installer_type :custom
-        options setup_options
+        options visual_studio_options
         timeout 3600 # 1hour
-        success_codes [0, 127, 3010]
+        returns [0, 127, 3010]
       end
 
       # Cleanup extracted ISO files from tmp dir
@@ -65,11 +71,20 @@ action :install do
         path extracted_iso_dir
         action :delete
         recursive true
-        not_if { new_resource.preserve_extracted_files }
+        only_if do
+          !(new_resource.source == '' || new_resource.source.nil?) \
+          && extractable_download && !new_resource.preserve_extracted_files
+        end
       end
     end
     new_resource.updated_by_last_action(true)
   end
+end
+
+def extractable_download
+  return false if new_resource.source == '' || new_resource.source.nil?
+  extension = ::File.extname(new_resource.source)
+  extension.casecmp('.iso').zero? || extension.casecmp('.zip').zero? || extension.casecmp('.7z').zero?
 end
 
 def prepare_vs_options
@@ -123,6 +138,39 @@ def create_vs2010_unattend_file
   config_path
 end
 
+def prepare_vs2017_options
+  setup_options = '--norestart --passive --wait'
+  setup_options << prepare_vs2017_options_installpath
+  setup_options << prepare_vs2017_options_global
+
+  visual_studio_attributes = node['visualstudio'][new_resource.version.to_s]
+  visual_studio_attributes[new_resource.edition.to_s]['default_install_items'].each do |key, attributes|
+    next unless attributes['selected']
+    setup_options << " --add #{key}"
+  end
+
+  setup_options
+end
+
+def prepare_vs2017_options_installpath
+  path_option = ''
+  path_option = " --installPath \"#{new_resource.install_dir}\"" unless new_resource.install_dir.empty?
+
+  path_option
+end
+
+def prepare_vs2017_options_global
+  visual_studio_attributes = node['visualstudio'][new_resource.version.to_s]
+
+  global_options = ''
+  global_options << ' --all' if visual_studio_attributes['all']
+  global_options << ' --allWorkloads' if visual_studio_attributes['allWorkloads']
+  global_options << ' --includeRecommended' if visual_studio_attributes['includeRecommended']
+  global_options << ' --includeOptional' if visual_studio_attributes['includeOptional']
+
+  global_options
+end
+
 def utf8_to_unicode(file_path)
   powershell_script "convert #{file_path} to unicode" do
     code(
@@ -135,9 +183,18 @@ def install_log_file
   win_friendly_path(::File.join(new_resource.install_dir, 'vsinstall.log'))
 end
 
+def visual_studio_options
+  options = prepare_vs2010_options if new_resource.version == '2010'
+  options = prepare_vs2017_options if new_resource.version == '2017'
+  options = prepare_vs_options unless new_resource.version == '2010' || new_resource.version == '2017'
+
+  options
+end
+
 def installer_exe
   installer = new_resource.installer_file || "vs_#{new_resource.edition}.exe"
-  ::File.join(extracted_iso_dir, installer)
+  installer = ::File.join(extracted_iso_dir, installer) unless new_resource.source.nil?
+  installer
 end
 
 def extracted_iso_dir

@@ -22,7 +22,7 @@ clone_depth: 1
 install:
   - ps: net user /add $env:winrm_user $env:winrm_pass
   - ps: net localgroup administrators $env:winrm_user /add
-  - ps: Invoke-WebRequest -Uri https://packages.chef.io/stable/windows/2008r2/chefdk-0.17.17-1-x86.msi -OutFile c:\projects\chefdk.msi
+  - ps: Invoke-WebRequest -Uri https://packages.chef.io/files/stable/chefdk/2.0.28/windows/2016/chefdk-2.0.28-1-x86.msi -OutFile c:\projects\chefdk.msi
   - ps: Start-Process C:\Windows\System32\msiexec.exe -ArgumentList "/qb /i c:\projects\chefdk.msi" -wait
   - ps: $env:PATH="C:\Ruby$env:ruby_version\bin;$env:PATH"
   - bundle config --local path c:\projects\bundle

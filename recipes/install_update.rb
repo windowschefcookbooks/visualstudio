@@ -28,10 +28,12 @@ versions_with_updates = versions.reject { |v| node['visualstudio'][v]['update'].
 versions_with_updates.each do |version|
   url = source_download_url(version, 'update')
   visualstudio_update "visualstudio_#{version}_update" do
+    version version
     install_dir node['visualstudio'][version]['install_dir']
     source url
     package_name node['visualstudio'][version]['update']['package_name']
     checksum node['visualstudio'][version]['update']['checksum']
     preserve_extracted_files node['visualstudio']['preserve_extracted_files']
+    installer_file installer_file node['visualstudio'][version]['update']['installer_file']
   end
 end

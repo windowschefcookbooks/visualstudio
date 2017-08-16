@@ -19,9 +19,6 @@
 # limitations under the License.
 #
 
-require 'digest/md5'
-require 'chef/shell_out'
-
 include Windows::Helper
 include Visualstudio::Helper
 
@@ -40,27 +37,47 @@ action :install do
         source new_resource.source
         overwrite true
         checksum new_resource.checksum
+        only_if { !new_resource.source.nil? && extractable_download }
+      end
+
+      # Not an ISO but the web install
+      remote_file "download__#{setup_basename}" do
+        path installer_exe
+        source { lazy { new_resource.source } }
+        checksum new_resource.checksum
+        only_if { !new_resource.source.nil? && !extractable_download }
+      end
+
+      # Ensure the target directory exists so logging doesn't fail on VS 2010
+      directory "create_#{new_resource.install_dir}" do
+        path new_resource.install_dir
+        recursive true
       end
 
       # Install Visual Studio Update
       windows_package new_resource.package_name do
-        source setup_exe
+        source installer_exe
         installer_type :custom
-        options "/Q /norestart /noweb /Log \"#{install_log_file}\""
+        options visual_studio_options
         timeout 3600 # 1 hour
         success_codes [0, 127, 3010]
       end
 
-      # Cleanup extracted ISO files
+      # Cleanup extracted ISO files from tmp dir
       directory "remove_#{new_resource.package_name}" do
         path extracted_iso_dir
         action :delete
         recursive true
-        not_if { new_resource.preserve_extracted_files }
+        only_if { !new_resource.source.nil? && !new_resource.preserve_extracted_files }
       end
     end
     new_resource.updated_by_last_action(true)
   end
+end
+
+def extractable_download
+  extension = ::File.extname(new_resource.source)
+  extension.casecmp('.iso').zero? || extension.casecmp('.zip').zero? || extension.casecmp('.7z').zero?
 end
 
 def extracted_iso_dir
@@ -78,12 +95,28 @@ end
 
 # only base file name of source, e.g. VS2013.5
 def setup_basename
-  ::File.basename(new_resource.source, '.iso')
+  ::File.basename(new_resource.source, '.*')
 end
 
-# setup executable path, by convention the exe has the same name as the iso
-# except VS 2010 which just uses setup.exe
-def setup_exe
-  setup_file = new_resource.package_name.include?('2010') ? 'setup.exe' : "#{setup_basename}.exe"
-  ::File.join(extracted_iso_dir, setup_file)
+def installer_exe
+  installer = new_resource.installer_file || new_resource.version == '2010' ? 'setup.exe' : "#{setup_basename}.exe"
+  installer = ::File.join(extracted_iso_dir, installer) unless new_resource.source.nil?
+  installer
+end
+
+def visual_studio_options
+  options = prepare_vs2017_options if new_resource.version == '2017'
+  options = prepare_vs_options unless new_resource.version == '2017'
+
+  options
+end
+
+def prepare_vs_options
+  setup_options = "/Q /norestart /noweb /log \"#{install_log_file}\""
+  setup_options
+end
+
+def prepare_vs2017_options
+  setup_options = '--norestart --passive --wait'
+  setup_options
 end

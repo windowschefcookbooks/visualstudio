@@ -22,6 +22,9 @@
 actions :install
 default_action :install
 
+# The VS version: 2010, 2012 etc
+attribute :version, kind_of: String, required: true
+
 # The VS installation directory
 attribute :install_dir, kind_of: String, required: true
 
@@ -36,3 +39,6 @@ attribute :checksum, kind_of: String
 
 # Should the extracted ISO files be preserved after installation?
 attribute :preserve_extracted_files, kind_of: [TrueClass, FalseClass], default: false
+
+# The installer filename specific to the edition, defaults to vs_<edition>.exe
+attribute :installer_file, kind_of: String, required: false

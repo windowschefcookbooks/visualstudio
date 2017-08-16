@@ -51,3 +51,4 @@ default['visualstudio']['2010']['update']['package_name'] =
   'Microsoft Visual Studio 2010 Service Pack 1'
 default['visualstudio']['2010']['update']['default_source'] =
   'http://download.microsoft.com/download/E/B/A/EBA0A152-F426-47E6-9E3F-EFB686E3CA20'
+default['visualstudio']['2010']['update']['installer_file'] = nil

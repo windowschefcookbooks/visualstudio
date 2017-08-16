@@ -28,28 +28,36 @@ module Visualstudio
 
     # Gets the version/edition ISO download URL or raises an error
     def source_download_url(version, edition)
+      url = nil
+      edition_node = node['visualstudio'][version][edition]
       src = iso_source(version, edition)
+      return url if (src == '' || src.nil?) && (\
+        edition_node['installer_file'].include?('/') \
+        || edition_node['installer_file'].include?('\\') \
+      )
       assert_src_is_not_nil(src, version, edition)
-      ::File.join(src, node['visualstudio'][version][edition]['filename'])
+      url = ::File.join(src, edition_node['filename']) if src
+      url
     end
 
     private
 
     # Gets the version/edition ISO download root URL
     def iso_source(version, edition)
-      src = node['visualstudio'][version][edition]['default_source']
+      edition_node = node['visualstudio'][version][edition]
+
+      src = edition_node['default_source']
       src = node['visualstudio']['source'] if node['visualstudio']['source']
-      src = node['visualstudio'][version][edition]['source'] if node['visualstudio'][version][edition]['source']
+      src = edition_node['source'] if edition_node['source']
       src
     end
 
     # Fails the Chef run if the visualstudio download source is not set
     def assert_src_is_not_nil(src, version, edition)
-      if src.nil?
-        raise 'The ISO download source is empty! '\
-          "Set the node['visualstudio']['#{version}']['#{edition}']['source'] " \
-          'or node[\'visualstudio\'][\'source\'] attribute and run again!'
-      end
+      return unless src.nil?
+      raise 'The ISO download source is empty! '\
+        "Set the node['visualstudio']['#{version}']['#{edition}']['source'] " \
+        'or node[\'visualstudio\'][\'source\'] attribute and run again!'
     end
 
     def windows_package_is_installed?(package_name)
